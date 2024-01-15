@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-15 Jamuary 2024
+15 January 2024
 @author: Vera Roshchina https://github.com/spectrahedron/
 
 Numerical calculation of the optimal measure that minimises the integral of 
