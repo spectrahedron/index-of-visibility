@@ -4,17 +4,17 @@
 @author: Vera Roshchina https://github.com/spectrahedron/
 
 Numerical calculation of the optimal measure that minimises the integral of 
-1 - κ(φ,ψ).
+1 + κ(φ+ψ).
 
 Note that the code is written with clarity in mind, and where code optimisation
 won't bring substantial benefits clarity is chosen over efficiency,
 to minimise errors and improve readability.
 
-The optimisation part of the code relies on the gurobi package.
+The optimisation part of the code relies on Gurobi package.
 
 Scroll down past the function definitions to change parameters.
 
-Set dimension d to 2 or 3.
+Set dimensions D to [2], [3] or [2,3].
 
 Choose the number of steps: this is the number of values of lambda for which 
 the approximate solution is calculated.
@@ -32,6 +32,7 @@ import math
 import gurobipy as gp
 from gurobipy import GRB
 import datetime
+import time
 import os
 
 
@@ -128,73 +129,83 @@ def minIntegral(Lambda,dimension = 2,divisions = 10):
 
     return obj,solution
 
-
-
-# output files
-now = datetime.datetime.now()
-path = now.strftime("%Y-%m-%d-%H-%M-%S")
-os.mkdir(path)
-path=path+"/"
-f = open(path+"lambda-integral-values.txt", "a")
-
-
 # number of values of lambda for which the problem is solved
-steps = 100
+steps = 100 
 # side subdivisions for the linear programming problem, for both angles
-subdivisions = 1000
+subdivisions = 1000 
 # dimension of the problem (note code only works for d=2 and d=3)
-d = 2
+# specify D = [2] or D = [3] to run the code for only one dimension
+D = [2,3]
 
-if (d==2):
-    maxlambda = 3*math.pi/8 
-else:
-    maxlambda = maxlambda = 4.0/3
+
+for d in D:
+
     
-step = maxlambda/steps
-
-delta = (math.pi/2)/subdivisions
-
-
-# generate the list of λ's from step to maxlambda
-lambdas = [step*(m+1) for m in range(steps)]
-
-
-it = 0
-
-for l in lambdas:
-     
-    it = it+1
+    # output files
+    now = datetime.datetime.now()
+    path = now.strftime("%Y-%m-%d-%H-%M-%S")
+    os.mkdir(path)
+    path=path+"/"
+    f = open(path+"lambda-integral-values.txt", "a")
+    fc = open(path+"computation-time.txt", "a")
     
-    print('Step '+str(it)+' out of '+str(len(lambdas))+', lambda='+"{:.12f}".format(l)+'.')
+    
     
     if (d==2):
-        Lambda = (8*l)/(3*math.pi)
+        maxlambda = 3*math.pi/8 
     else:
-        Lambda = 3*l/4.0
+        maxlambda = 4.0/3
+        
+    step = maxlambda/steps
     
-    val,solution = minIntegral(Lambda,d,subdivisions)
+    delta = (math.pi/2)/subdivisions
     
-    # write the value of lambda and the value of integral in the format useful
-    # for Mathematica plotting
-    f.write('{'+"{:.12f}".format(l)+', '+"{:.12f}".format(val)+'},\n')
     
-    g = open(path+"measure-"+str(it)+'-lambda-'+"{:.12f}".format(l).replace('.','-')+".txt","a")
-    g.write("diimension="+str(d)+'\n')
-    g.write("lambda="+"{:.12f}".format(l)+'\n')
-    g.write("integral="+"{:.12f}".format(val)+'\n')
-            
-    # only write the values that are nonzero, otherwise it is impossible 
-    # to plot with Mathematica
-    for i in range(len(solution)):
-        line = solution[i]
-        for j in range(len(line)):
-            zval = line[j]
-            if (zval>0.00000001):
-                x = "{:.12f}".format(i*delta+delta/2)
-                y = "{:.12f}".format(j*delta+delta/2)
-                z = "{:.12f}".format(line[j])
-                g.write('{'+x+','+y+','+z+'},')            
+    # generate the list of λ's from step to maxlambda
+    lambdas = [step*(m+1) for m in range(steps)]
     
-    g.close()
-
-f.close()
+    
+    it = 0
+    
+    for l in lambdas:
+         
+        it = it+1
+        
+        print('Step '+str(it)+' out of '+str(len(lambdas))+', lambda='+"{:.12f}".format(l)+'.')
+        
+        if (d==2):
+            Lambda = (8*l)/(3*math.pi)
+        else:
+            Lambda = 3*l/4.0
+        
+        start = time.process_time()
+        
+        val,solution = minIntegral(Lambda,d,subdivisions)
+        
+        # write the value of lambda and the value of integral in the format useful
+        # for Mathematica plotting
+        f.write('{'+"{:.12f}".format(l)+', '+"{:.12f}".format(val)+'},\n')
+        fc.write(str(time.process_time() - start)+'\n')
+        
+        g = open(path+"measure-"+str(it)+'-lambda-'+"{:.12f}".format(l).replace('.','-')+".txt","a")
+        g.write("dimension="+str(d)+'\n')
+        g.write("subdivisions="+str(subdivisions)+'\n')
+        g.write("lambda="+"{:.12f}".format(l)+'\n')
+        g.write("integral="+"{:.12f}".format(val)+'\n')
+                
+        # only write the values that are nonzero, otherwise it is impossible 
+        # to plot with Mathematica
+        for i in range(len(solution)):
+            line = solution[i]
+            for j in range(len(line)):
+                zval = line[j]
+                if (zval>0.00000001):
+                    x = "{:.12f}".format(i*delta+delta/2)
+                    y = "{:.12f}".format(j*delta+delta/2)
+                    z = "{:.12f}".format(line[j])
+                    g.write('{'+x+','+y+','+z+'},')            
+        
+        g.close()
+    
+    f.close()
+    fc.close()
