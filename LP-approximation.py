@@ -84,7 +84,9 @@ def kappa(phi,psi,Lambda):
 # Solves an LP approximation to the problem for a given Lambda.
 # Divisions is the number of subdivisions of psi and phi axes.
 # divisions = 10 gives 10 subdivisions, so it is a 10x10 grid.
-def minIntegral(Lambda,dimension = 2,divisions = 10):
+# lower_bound = True assigns the minimal values of kappa in the cell 
+# to cijs.
+def minIntegral(Lambda,dimension = 2,divisions = 10, lower_bound = True):
     
     # length of each division segment
     # along each side: pi/2 divided by the number of divisions
@@ -113,8 +115,10 @@ def minIntegral(Lambda,dimension = 2,divisions = 10):
     for (i,j) in indices:
         model.addConstr(x[i,j]>=0)
 
-    
-    objective = [[kappa(math.pi*(i+0.5)/(2 *divisions),math.pi*(j+0.5)/(2*divisions),Lambda) for j in range(divisions)] for i in range(divisions)]
+    if (lower_bound):
+        objective = [[kappa(math.pi*(i+1)/(2 *divisions),math.pi*(j+1)/(2*divisions),Lambda) for j in range(divisions)] for i in range(divisions)]
+    else:
+        objective = [[kappa(math.pi*(i+0.5)/(2 *divisions),math.pi*(j+0.5)/(2*divisions),Lambda) for j in range(divisions)] for i in range(divisions)]
     model.setObjective(gp.quicksum(x[i,j]*objective[i][j] for (i, j) in indices),GRB.MINIMIZE)
     
     model.optimize()
@@ -130,20 +134,22 @@ def minIntegral(Lambda,dimension = 2,divisions = 10):
     return obj,solution
 
 # number of values of lambda for which the problem is solved
-steps = 100 
+steps = 10
 # side subdivisions for the linear programming problem, for both angles
-subdivisions = 1000 
+subdivisions = 40
 # dimension of the problem (note code only works for d=2 and d=3)
 # specify D = [2] or D = [3] to run the code for only one dimension
 D = [2,3]
-
+# set lower_bound = True for lower bound estimation 
+# and lower_bound = False for an approximation with middle of the cell values
+lower_bound = True
 
 for d in D:
 
     
     # output files
     now = datetime.datetime.now()
-    path = now.strftime("%Y-%m-%d-%H-%M-%S")
+    path = now.strftime("%Y-%m-%d-%H-%M-%S"+"-d"+str(d)+"-g"+str(subdivisions)+"-l"+str(steps))
     os.mkdir(path)
     path=path+"/"
     f = open(path+"lambda-integral-values.txt", "a")
@@ -180,7 +186,7 @@ for d in D:
         
         start = time.process_time()
         
-        val,solution = minIntegral(Lambda,d,subdivisions)
+        val,solution = minIntegral(Lambda,d,subdivisions,lower_bound = lower_bound)
         
         # write the value of lambda and the value of integral in the format useful
         # for Mathematica plotting
